@@ -3,6 +3,9 @@
 const { Contract } = require("fabric-contract-api");
 
 class Order extends Contract {
+    async init(ctx){
+        console.info("Chaincode Instantiated");
+    }
     async createOrder(
         ctx,
         order_id,
