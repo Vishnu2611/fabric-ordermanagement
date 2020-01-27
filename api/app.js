@@ -28,7 +28,7 @@ var jwt = require("jsonwebtoken");
 var bearerToken = require("express-bearer-token");
 var cors = require("cors");
 const _ = require("lodash");
-const { users } = require("./users");
+const user = require("./users");
 
 require("./config.js");
 var hfc = require("fabric-client");
@@ -126,113 +126,100 @@ function getErrorMessage(field) {
 //Login appi
 
 app.post("/signup", async function(req, res) {
-  var username = req.body.username;
-  var orgName = req.body.orgName;
+  var username = req.body.employeeId;
+  var orgName = req.body.companyName;
   var password = req.body.password;
   logger.debug("End point : /signup");
-  logger.debug("User name : " + username);
-  logger.debug("Org name  : " + orgName);
-  logger.debug("Password name  : " + password);
+  logger.debug("Employee Id : " + username);
+  logger.debug("Company Name  : " + orgName);
+  logger.debug("Password  : " + password);
   if (!username) {
-    res.json(getErrorMessage("'username'"));
+    res.json(getErrorMessage("'Employee Id'"));
     return;
   }
   if (!orgName) {
-    res.json(getErrorMessage("'orgName'"));
+    res.json(getErrorMessage("'Company Name'"));
     return;
   }
-  const existing_user = _.filter(users, { username });
-  if (existing_user.length > 0) {
-    let response = {};
+  if (!password) {
+    res.json(getErrorMessage("'Password'"));
+    return;
+  }
+  try{
+	await user.register(req.body)
+  let response = await helper.getRegisteredUser(username, orgName, true);
+	logger.debug(
+	  "-- returned from registering the username %s for organization %s",
+	  username,
+	  orgName
+	);
+	if (response && typeof response !== "string") {
+	  logger.debug(
+		"Successfully registered the username %s for organization %s",
+		username,
+		orgName
+	  );
+	  response.message = "user created successfully";
+	  response.status = "success";
+	  delete response.secret;
+	  res.json(response);
+	} else {
+	  logger.debug(
+		"Failed to register the username %s for organization %s with::%s",
+		username,
+		orgName,
+		response
+	  );
+	  res.json({ success: false, message: response });
+	}
+  }
+  catch(error) {
+	let response = {};
     response.message = "user exists";
     response.status = "failure";
     return res.json(response);
-  }
-  let response = await helper.getRegisteredUser(username, orgName, true);
-  logger.debug(
-    "-- returned from registering the username %s for organization %s",
-    username,
-    orgName
-  );
-  if (response && typeof response !== "string") {
-    logger.debug(
-      "Successfully registered the username %s for organization %s",
-      username,
-      orgName
-    );
-    response.message = "user created successfully";
-    response.status = "success";
-    const user = { username, orgName, password };
-    users.push(user);
-    delete response.secret;
-    res.json(response);
-  } else {
-    logger.debug(
-      "Failed to register the username %s for organization %s with::%s",
-      username,
-      orgName,
-      response
-    );
-    res.json({ success: false, message: response });
   }
 });
 
 // Register and enroll user
 app.post("/login", async function(req, res) {
-  var username = req.body.username;
-  var orgName = req.body.orgName;
+  let response = {};
+  var username = req.body.employeeId;
   const password = req.body.password;
   logger.debug("End point : /users");
   logger.debug("User name : " + username);
-  logger.debug("Org name  : " + orgName);
+  logger.debug("Password  : " + password);
   if (!username) {
     res.json(getErrorMessage("'username'"));
     return;
   }
-  if (!orgName) {
-    res.json(getErrorMessage("'orgName'"));
+  if (!password) {
+    res.json(getErrorMessage("'password'"));
     return;
   }
-  const existing_user = _.filter(users, { username, password });
-  if (existing_user.length == 0) {
-    let response = {};
-    response.message = "user does not exists";
+  try{
+  const info = await user.login(req.body);
+	var token = jwt.sign(
+		{
+		  exp:
+			Math.floor(Date.now() / 1000) +
+			parseInt(hfc.getConfigSetting("jwt_expiretime")),
+		  username: info.employeeId,
+		  orgName: info.companyName
+		},
+		app.get("secret")
+    );
+    console.log(jwt.decode(token));
+    response.status = "200";
+    response.message = "Success";
+    response.token = token;
+    res.json(response);
+  }
+  catch(error){
+	  response.message = "Error";
+	  response.error = error;
     response.status = "failure";
     return res.json(response);
-  }
-  var token = jwt.sign(
-    {
-      exp:
-        Math.floor(Date.now() / 1000) +
-        parseInt(hfc.getConfigSetting("jwt_expiretime")),
-      username: username,
-      orgName: orgName
-    },
-    app.get("secret")
-  );
-  let response = await helper.getRegisteredUser(username, orgName, true);
-  logger.debug(
-    "-- returned from registering the username %s for organization %s",
-    username,
-    orgName
-  );
-  if (response && typeof response !== "string") {
-    logger.debug(
-      "Successfully registered the username %s for organization %s",
-      username,
-      orgName
-    );
-    response.token = token;
-    delete response.secret;
-    res.json(response);
-  } else {
-    logger.debug(
-      "Failed to register the username %s for organization %s with::%s",
-      username,
-      orgName,
-      response
-    );
-    res.json({ success: false, message: response });
   }
 });
 

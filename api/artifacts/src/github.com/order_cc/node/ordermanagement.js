@@ -104,6 +104,26 @@ class Order extends Contract {
             throw new Error(`Some error has occured ${error}`);
         }
     }
+    async getHistory(ctx, orderid) {
+        try {
+            const resultIterator = await ctx.stub.getHistoryForKey(orderid);
+            const orders = [];
+            while(true) {
+                let res = await resultIterator.next();
+                if(res.value && res.value.toString()) {
+                    let order = {};
+                    order.Key = res.value.Key;
+                    order.Record = JSON.parse(res.value.value.toString("utf8"));
+                    orders.push(order);
+                }
+                if (res.done) {
+                    await resultIterator.close();
+                    return orders;
+                }
+            }
+        } catch (error) {
+            throw new Error(`Some error has occured ${error}`);
+        }
+    }
 }
-
 module.exports = Order;

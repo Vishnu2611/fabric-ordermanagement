@@ -93,6 +93,7 @@ channels:
       # the format follows the "cannonical name" of chaincodes by fabric code
       - ordercc:v0
 
+
 #
 # list of participating organizations in this network
 #
