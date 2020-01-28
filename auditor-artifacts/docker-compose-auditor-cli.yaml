@@ -1,0 +1,118 @@
+version: '2'
+volumes:
+  peer0.auditor.orderermanagement.com:
+  peer1.auditor.orderermanagement.com:
+networks:
+  auto:
+services:
+  peer0.auditor.orderermanagement.com:
+    container_name: peer0.auditor.orderermanagement.com
+    extends:
+      file: base/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer0.auditor.orderermanagement.com
+      - CORE_PEER_ADDRESS=peer0.auditor.orderermanagement.com:13051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:13051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.auditor.orderermanagement.com:13052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:13052
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.auditor.orderermanagement.com:13051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.auditor.orderermanagement.com:14051
+      - CORE_PEER_LOCALMSPID=AuditorMSP
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=peer0.auditorcouchdb:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
+    depends_on:
+      - peer0.auditorcouchdb
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/auditor.orderermanagement.com/peers/peer0.auditor.orderermanagement.com/msp:/etc/hyperledger/fabric/msp
+        - ./crypto-config/peerOrganizations/auditor.orderermanagement.com/peers/peer0.auditor.orderermanagement.com/tls:/etc/hyperledger/fabric/tls
+        - peer0.auditor.orderermanagement.com:/var/hyperledger/production
+    ports:
+      - 13051:13051
+    networks:
+      - auto
+
+  peer0.auditorcouchdb:
+    container_name: peer0.auditorcouchdb
+    image: hyperledger/fabric-couchdb
+    environment:
+      - COUCHDB_USER=
+      - COUCHDB_PASSWORD=
+    ports:
+      - "11984:5984"
+    networks:
+      - auto
+
+  peer1.auditor.orderermanagement.com:
+    container_name: peer1.auditor.orderermanagement.com
+    extends:
+      file: base/peer-base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=peer1.auditor.orderermanagement.com
+      - CORE_PEER_ADDRESS=peer1.auditor.orderermanagement.com:14051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:14051
+      - CORE_PEER_CHAINCODEADDRESS=peer1.auditor.orderermanagement.com:14052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:14052
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.auditor.orderermanagement.com:14051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.auditor.orderermanagement.com:13051
+      - CORE_PEER_LOCALMSPID=AuditorMSP
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=peer1.auditorcouchdb:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
+    depends_on:
+      - peer1.auditorcouchdb
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/auditor.orderermanagement.com/peers/peer1.auditor.orderermanagement.com/msp:/etc/hyperledger/fabric/msp
+        - ./crypto-config/peerOrganizations/auditor.orderermanagement.com/peers/peer1.auditor.orderermanagement.com/tls:/etc/hyperledger/fabric/tls
+        - peer1.auditor.orderermanagement.com:/var/hyperledger/production
+    ports:
+      - 14051:14051
+    networks:
+      - auto
+
+  peer1.auditorcouchdb:
+    container_name: peer1.auditorcouchdb
+    image: hyperledger/fabric-couchdb
+    environment:
+      - COUCHDB_USER=
+      - COUCHDB_PASSWORD=
+    ports:
+      - "12984:5984"
+    networks:
+      - auto
+
+  auditorcli:
+    container_name: auditorcli
+    image: hyperledger/fabric-tools:$IMAGE_TAG
+    tty: true
+    stdin_open: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_ID=auditorcli
+      - CORE_PEER_ADDRESS=peer0.auditor.orderermanagement.com:13051
+      - CORE_PEER_LOCALMSPID=AuditorMSP
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/auditor.orderermanagement.com/peers/peer0.auditor.orderermanagement.com/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/auditor.orderermanagement.com/peers/peer0.auditor.orderermanagement.com/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/auditor.orderermanagement.com/peers/peer0.auditor.orderermanagement.com/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/auditor.orderermanagement.com/users/Admin@auditor.orderermanagement.com/msp
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/bash
+    volumes:
+        - /var/run/:/host/var/run/
+        - ../chaincode/:/opt/gopath/src/github.com/chaincode
+        - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
+        - ../channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
+    depends_on:
+      - peer0.auditor.orderermanagement.com
+      - peer1.auditor.orderermanagement.com
+    networks:
+      - auto

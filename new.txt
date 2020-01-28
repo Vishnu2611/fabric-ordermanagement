@@ -1,4 +1,13 @@
 stub.getQueryResult(querystring)
 querystring = 
-peer chaincode query -C amchannel -n mycc  -c '{"Args":["query","{\"selector\":{\"docType\":\"order\"}}","19"]}'
+peer chaincode query -C amchannel -n ordercc  -c '{"Args":["query","{\"selector\":{\"docType\":\"order\"}}"]}'
+peer chaincode query -C amchannel -n ordercc  -c '{"Args":["query","{\"selector\":{\"docType\":\"order\",\"owner\":\"Audi\"}"]}'
 stub.getQueryResultWithPagination(querystring)
+
+
+["query","{'selector':{'docType':'order','owner':'Audi'}"]
+
+
+from sdk and postman
+
+["{\"selector\":{\"docType\":\"order\",\"owner\":\"Audi\"}}"]
